@@ -13,7 +13,7 @@
 # data/processed/df_clean.rds
 #
 # Output:
-# Exploratory figures saved to figures/eda/
+# outputs/figures/eda/
 #
 # =========================================================
 
@@ -32,7 +32,7 @@ suppressPackageStartupMessages({
 # ---------------------------------------------------------
 
 input_path <- "data/processed/df_clean.rds"
-figure_dir <- "figures/eda"
+figure_dir <- "outputs/figures/eda"
 
 if (!dir.exists(figure_dir)) {
   dir.create(figure_dir, recursive = TRUE)
@@ -71,18 +71,14 @@ df_eda <- df_clean %>%
   mutate(
     year = year(tourney_date),
     
-    # Rank difference: positive values indicate that the winner
-    # was ranked higher before the match.
     winner_rank_f = if_else(is.na(winner_rank), 9999L, winner_rank),
     loser_rank_f  = if_else(is.na(loser_rank),  9999L, loser_rank),
     rank_diff     = loser_rank_f - winner_rank_f,
     
-    # Ranking-point difference between winner and loser
     rank_points_diff =
       coalesce(winner_rank_points, 0) -
       coalesce(loser_rank_points, 0),
     
-    # Outcome indicator: 1 if the higher-ranked player won
     higher_rank_won = if_else(
       !is.na(winner_rank) &
         !is.na(loser_rank) &
@@ -107,7 +103,6 @@ df_eda <- df_clean %>%
 # 3) Distribution checks
 # ---------------------------------------------------------
 
-# Winner rank distribution
 p_winner_rank <- ggplot(df_eda, aes(winner_rank)) +
   geom_histogram(binwidth = 25, fill = "grey40") +
   labs(
@@ -126,7 +121,6 @@ ggsave(
   dpi = 300
 )
 
-# Loser rank distribution
 p_loser_rank <- ggplot(df_eda, aes(loser_rank)) +
   geom_histogram(binwidth = 25, fill = "grey40") +
   labs(
@@ -145,7 +139,6 @@ ggsave(
   dpi = 300
 )
 
-# Rank points distribution
 p_rank_points <- df_eda %>%
   pivot_longer(
     cols = c(winner_rank_points, loser_rank_points),
@@ -171,6 +164,11 @@ ggsave(
   height = 5,
   dpi = 300
 )
+
+message("\nEDA figures saved to:")
+message(" - outputs/figures/eda/winner_rank_distribution.png")
+message(" - outputs/figures/eda/loser_rank_distribution.png")
+message(" - outputs/figures/eda/rank_points_distribution.png")
 
 # Winner age distribution
 p_winner_age <- ggplot(df_eda, aes(winner_age)) +
@@ -280,7 +278,7 @@ print(p_rank_winrate)
 
 # Main report figure
 ggsave(
-  filename = "figures/rank_winrate.png",
+  filename = "outputs/figures/rank_winrate.png",
   plot = p_rank_winrate,
   width = 8,
   height = 5,
@@ -461,7 +459,7 @@ print(p_temporal_trends)
 
 # Main report figure
 ggsave(
-  filename = "figures/temporal_trends.png",
+  filename = "outputs/figures/temporal_trends.png",
   plot = p_temporal_trends,
   width = 8,
   height = 5,
@@ -509,8 +507,10 @@ ggsave(
 # 7) Summary tables
 # ---------------------------------------------------------
 
-if (!dir.exists("results")) {
-  dir.create("results", recursive = TRUE)
+table_dir <- "outputs/tables"
+
+if (!dir.exists(table_dir)) {
+  dir.create(table_dir, recursive = TRUE)
 }
 
 # Top 10 tournaments by match count
@@ -522,7 +522,7 @@ print(top_tournaments)
 
 write.csv(
   top_tournaments,
-  file = "results/top_10_tournaments.csv",
+  file = file.path(table_dir, "top_10_tournaments.csv"),
   row.names = FALSE
 )
 
@@ -534,7 +534,7 @@ print(surface_level_counts)
 
 write.csv(
   surface_level_counts,
-  file = "results/surface_level_counts.csv",
+  file = file.path(table_dir, "surface_level_counts.csv"),
   row.names = FALSE
 )
 
@@ -556,9 +556,14 @@ print(surface_summary)
 
 write.csv(
   surface_summary,
-  file = "results/surface_summary.csv",
+  file = file.path(table_dir, "surface_summary.csv"),
   row.names = FALSE
 )
 
-message("\nEDA completed. Figures saved to figures/ and figures/eda/.")
-message("Summary tables saved to results/.")
+message("\nEDA completed.")
+message("Figures saved to:")
+message(" - outputs/figures/")
+message(" - outputs/figures/eda/")
+
+message("\nSummary tables saved to:")
+message(" - outputs/tables/")
