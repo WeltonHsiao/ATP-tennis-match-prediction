@@ -37,15 +37,23 @@ suppressPackageStartupMessages({
 K_BASE <- 32
 DEFAULT_RATING <- 1500
 
-df_clean <- readRDS("data/processed/df_clean.rds")
+input_path <- "data/processed/df_clean.rds"
+table_dir  <- "outputs/tables"
+figure_dir <- "outputs/figures"
 
-if (!dir.exists("results")) {
-  dir.create("results", recursive = TRUE)
+if (!file.exists(input_path)) {
+  stop("Cleaned data not found. Please run scripts/01_load_clean_data.R first.")
 }
 
-if (!dir.exists("figures")) {
-  dir.create("figures", recursive = TRUE)
+if (!dir.exists(table_dir)) {
+  dir.create(table_dir, recursive = TRUE)
 }
+
+if (!dir.exists(figure_dir)) {
+  dir.create(figure_dir, recursive = TRUE)
+}
+
+df_clean <- readRDS(input_path)
 
 # ---------------------------------------------------------
 # 1) Build sequential Elo dataset
@@ -222,14 +230,14 @@ print(baseline_elo_results)
 
 write.csv(
   baseline_elo_results,
-  "results/baseline_elo_results.csv",
+  file.path(table_dir, "baseline_elo_results.csv"),
   row.names = FALSE
 )
 
 # Save Elo predictions for later comparison
 write.csv(
   elo_test_baseline,
-  "results/baseline_elo_predictions_2019.csv",
+  file.path(table_dir, "baseline_elo_predictions_2019.csv"),
   row.names = FALSE
 )
 
@@ -266,7 +274,7 @@ p_elo_calibration <- ggplot(calib_elo, aes(mean_pred, obs_rate)) +
 print(p_elo_calibration)
 
 ggsave(
-  filename = "figures/elo_calibration.png",
+  filename = file.path(figure_dir, "elo_calibration.png"),
   plot = p_elo_calibration,
   width = 7,
   height = 5,
@@ -298,7 +306,7 @@ p_elo_yearly_accuracy <- ggplot(elo_yearly_accuracy, aes(year, accuracy)) +
 print(p_elo_yearly_accuracy)
 
 ggsave(
-  filename = "figures/elo_yearly_accuracy.png",
+  filename = file.path(figure_dir, "elo_yearly_accuracy.png"),
   plot = p_elo_yearly_accuracy,
   width = 7,
   height = 5,
@@ -307,14 +315,18 @@ ggsave(
 
 write.csv(
   elo_yearly_accuracy,
-  "results/elo_yearly_accuracy.csv",
+  file.path(table_dir, "elo_yearly_accuracy.csv"),
   row.names = FALSE
 )
 
 message("\nBaseline Elo modelling completed.")
-message("Results saved to results/baseline_elo_results.csv")
-message("Predictions saved to results/baseline_elo_predictions_2019.csv")
-message("Calibration plot saved to figures/elo_calibration.png")
+message("Results saved to:")
+message(" - outputs/tables/baseline_elo_results.csv")
+message(" - outputs/tables/baseline_elo_predictions_2019.csv")
+message(" - outputs/tables/elo_yearly_accuracy.csv")
+message("Figures saved to:")
+message(" - outputs/figures/elo_calibration.png")
+message(" - outputs/figures/elo_yearly_accuracy.png")
 
 # ---------------------------------------------------------
 # 9) Contextual Elo model preparation
@@ -479,7 +491,7 @@ context_test_predictions <- process_contextual_elo_block(
 
 write.csv(
   context_test_predictions,
-  "results/contextual_elo_predictions_2019.csv",
+  file.path(table_dir, "contextual_elo_predictions_2019.csv"),
   row.names = FALSE
 )
 
@@ -506,7 +518,7 @@ print(contextual_elo_results)
 
 write.csv(
   contextual_elo_results,
-  "results/contextual_elo_results.csv",
+  file.path(table_dir, "contextual_elo_results.csv"),
   row.names = FALSE
 )
 
@@ -546,7 +558,7 @@ p_context_elo_calibration <- ggplot(
 print(p_context_elo_calibration)
 
 ggsave(
-  filename = "figures/elo_context_calibration.png",
+  filename = file.path(figure_dir, "elo_context_calibration.png"),
   plot = p_context_elo_calibration,
   width = 7,
   height = 5,
@@ -554,6 +566,9 @@ ggsave(
 )
 
 message("\nContextual Elo modelling completed.")
-message("Results saved to results/contextual_elo_results.csv")
-message("Predictions saved to results/contextual_elo_predictions_2019.csv")
-message("Calibration plot saved to figures/elo_context_calibration.png")
+message("Results saved to:")
+message(" - outputs/tables/contextual_elo_results.csv")
+message("Predictions saved to:")
+message(" - outputs/tables/contextual_elo_predictions_2019.csv")
+message("Calibration plot saved to:")
+message(" - outputs/figures/elo_context_calibration.png")
