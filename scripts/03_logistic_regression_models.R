@@ -35,15 +35,23 @@ set.seed(123)
 # 0) Load cleaned data and create output folders
 # ---------------------------------------------------------
 
-df_clean <- readRDS("data/processed/df_clean.rds")
+input_path <- "data/processed/df_clean.rds"
+table_dir  <- "outputs/tables"
+figure_dir <- "outputs/figures"
 
-if (!dir.exists("results")) {
-  dir.create("results", recursive = TRUE)
+if (!file.exists(input_path)) {
+  stop("Cleaned data not found. Please run scripts/01_load_clean_data.R first.")
 }
 
-if (!dir.exists("figures")) {
-  dir.create("figures", recursive = TRUE)
+if (!dir.exists(table_dir)) {
+  dir.create(table_dir, recursive = TRUE)
 }
+
+if (!dir.exists(figure_dir)) {
+  dir.create(figure_dir, recursive = TRUE)
+}
+
+df_clean <- readRDS(input_path)
 
 # ---------------------------------------------------------
 # 1) Construct modelling dataset
@@ -183,7 +191,7 @@ logistic_predictions <- test %>%
 
 write.csv(
   logistic_predictions,
-  "results/logistic_predictions_2019.csv",
+  file.path(table_dir, "logistic_predictions_2019.csv"),
   row.names = FALSE
 )
 
@@ -230,7 +238,7 @@ print(logistic_results)
 
 write.csv(
   logistic_results,
-  "results/logistic_regression_results.csv",
+  file.path(table_dir, "logistic_regression_results.csv"),
   row.names = FALSE
 )
 
@@ -267,7 +275,7 @@ p_logit_calibration <- ggplot(calib_tbl, aes(mean_pred, obs_rate)) +
 print(p_logit_calibration)
 
 ggsave(
-  filename = "figures/logit_calibration.png",
+  filename = file.path(figure_dir, "logit_calibration.png"),
   plot = p_logit_calibration,
   width = 7,
   height = 5,
@@ -275,6 +283,9 @@ ggsave(
 )
 
 message("\nLogistic regression modelling completed.")
-message("Results saved to results/logistic_regression_results.csv")
-message("Predictions saved to results/logistic_predictions_2019.csv")
-message("Calibration plot saved to figures/logit_calibration.png")
+message("Results saved to:")
+message(" - outputs/tables/logistic_regression_results.csv")
+message("Predictions saved to:")
+message(" - outputs/tables/logistic_predictions_2019.csv")
+message("Calibration plot saved to:")
+message(" - outputs/figures/logit_calibration.png")
