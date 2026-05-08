@@ -25,6 +25,7 @@ data/raw/
 
 ## Repository Structure
 
+```text
 data/
 ├── raw/
 ├── processed/
@@ -40,6 +41,7 @@ scripts/
 ├── 04_elo_models.R
 ├── 05_rolling_window_models.R
 ├── 06_lag_enhanced_models.R
+```
 
 ## Outputs 
 - figures/: visualisations used in the report
