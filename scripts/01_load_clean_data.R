@@ -145,7 +145,15 @@ df_clean <- df_clean |>
 # 6) Save cleaned data
 # ---------------------------------------------------------
 
-saveRDS(df_clean, file.path(out_dir, "df_clean.rds"))
+saveRDS(
+  df_clean,
+  file.path(out_dir, "df_clean.rds")
+)
+
+write_csv(
+  df_clean,
+  file.path(out_dir, "df_clean.csv")
+)
 
 # ---------------------------------------------------------
 # 7) Sanity checks
@@ -167,4 +175,6 @@ message(
   format(max(df_clean$tourney_date, na.rm = TRUE))
 )
 
-message("\nSaved cleaned data to: data/processed/df_clean.rds")
+message("\nSaved cleaned data to:")
+message(" - data/processed/df_clean.rds")
+message(" - data/processed/df_clean.csv")
