@@ -39,15 +39,23 @@ START_YEAR <- 2003
 END_YEAR <- 2019
 K_LAGS <- 3
 
-df_clean <- readRDS("data/processed/df_clean.rds")
+input_path <- "data/processed/df_clean.rds"
+table_dir  <- "outputs/tables"
+figure_dir <- "outputs/figures"
 
-if (!dir.exists("results")) {
-  dir.create("results", recursive = TRUE)
+if (!file.exists(input_path)) {
+  stop("Cleaned data not found. Please run scripts/01_load_clean_data.R first.")
 }
 
-if (!dir.exists("figures")) {
-  dir.create("figures", recursive = TRUE)
+if (!dir.exists(table_dir)) {
+  dir.create(table_dir, recursive = TRUE)
 }
+
+if (!dir.exists(figure_dir)) {
+  dir.create(figure_dir, recursive = TRUE)
+}
+
+df_clean <- readRDS(input_path)
 
 # ---------------------------------------------------------
 # 1) Build player-year win rates
@@ -69,7 +77,7 @@ player_year_stats <- df_clean %>%
 
 write.csv(
   player_year_stats,
-  "results/player_year_win_rates.csv",
+  file.path(table_dir, "player_year_win_rates.csv"),
   row.names = FALSE
 )
 
@@ -197,7 +205,7 @@ saveRDS(
 
 write.csv(
   df_model_lag,
-  "results/df_model_lag_summary_data.csv",
+  file.path(table_dir, "df_model_lag_summary_data.csv"),
   row.names = FALSE
 )
 
@@ -219,7 +227,10 @@ glimpse(
 )
 
 message("\nLagged win-rate features constructed.")
-message("Lag model data saved to data/processed/df_model_lag.rds")
+message("Lag model data saved to:")
+message(" - data/processed/df_model_lag_before_remove.rds")
+message(" - data/processed/df_model_lag.rds")
+message(" - outputs/tables/df_model_lag_summary_data.csv")
 
 # ---------------------------------------------------------
 # 6) Check lag feature quality
@@ -246,7 +257,7 @@ print(lag_check_by_year)
 
 write.csv(
   lag_check_by_year,
-  "results/lag_check_by_year.csv",
+  file.path(table_dir, "lag_check_by_year.csv"),
   row.names = FALSE
 )
 
@@ -288,7 +299,7 @@ p_lag_before_remove <- lag_long_before %>%
 print(p_lag_before_remove)
 
 ggsave(
-  filename = "figures/lag_before_remove.png",
+  filename = file.path(figure_dir, "lag_before_remove.png"),
   plot = p_lag_before_remove,
   width = 10,
   height = 6,
@@ -315,7 +326,7 @@ p_lag_after_remove <- lag_long %>%
 print(p_lag_after_remove)
 
 ggsave(
-  filename = "figures/lag_after_remove.png",
+  filename = file.path(figure_dir, "lag_after_remove.png"),
   plot = p_lag_after_remove,
   width = 10,
   height = 6,
@@ -337,7 +348,7 @@ p_lag_full_distribution <- ggplot(lag_long, aes(x = wr_diff)) +
 print(p_lag_full_distribution)
 
 ggsave(
-  filename = "figures/lag_full_distribution.png",
+  filename = file.path(figure_dir, "lag_full_distribution.png"),
   plot = p_lag_full_distribution,
   width = 14,
   height = 6,
@@ -367,7 +378,7 @@ print(lag_mean_by_year)
 
 write.csv(
   lag_mean_by_year,
-  "results/lag_mean_by_year.csv",
+  file.path(table_dir, "lag_mean_by_year.csv"),
   row.names = FALSE
 )
 
@@ -390,7 +401,7 @@ p_lag_mean_bar <- ggplot(
 print(p_lag_mean_bar)
 
 ggsave(
-  filename = "figures/lag_mean_by_year_bar.png",
+  filename = file.path(figure_dir, "lag_mean_by_year_bar.png"),
   plot = p_lag_mean_bar,
   width = 10,
   height = 5,
@@ -417,7 +428,7 @@ p_lag_over_time <- ggplot(
 print(p_lag_over_time)
 
 ggsave(
-  filename = "figures/lag_over_time.png",
+  filename = file.path(figure_dir, "lag_over_time.png"),
   plot = p_lag_over_time,
   width = 8,
   height = 5,
@@ -425,7 +436,14 @@ ggsave(
 )
 
 message("\nLag feature quality checks completed.")
-message("Lag figures saved to figures/.")
+message("Results saved to:")
+message(" - outputs/tables/lag_mean_by_year.csv")
+message("Figures saved to:")
+message(" - outputs/figures/lag_before_remove.png")
+message(" - outputs/figures/lag_after_remove.png")
+message(" - outputs/figures/lag_full_distribution.png")
+message(" - outputs/figures/lag_mean_by_year_bar.png")
+message(" - outputs/figures/lag_over_time.png")
 
 # ---------------------------------------------------------
 # 10) Helper: standardise lag variables using training data
@@ -501,33 +519,41 @@ fit_one_lag_model <- function(train_data, test_data) {
 lag_model_out <- map(
   START_YEAR:END_YEAR,
   function(test_year) {
+    
     train_data <- df_model_lag %>%
-      filter(year >= test_year - WINDOW_YEARS, year < test_year)
+      filter(year >= test_year - WINDOW_YEARS,
+             year < test_year)
     
     test_data <- df_model_lag %>%
       filter(year == test_year)
     
-    if (nrow(train_data) > 100 && nrow(test_data) > 100) {
+    if (nrow(train_data) > 100 &&
+        nrow(test_data) > 100) {
+      
       fit_one_lag_model(train_data, test_data)
+      
     } else {
       NULL
     }
   }
 )
 
+# Safer extraction than map_dfr("metrics")
 lag_model_results <- lag_model_out %>%
-  discard(is.null) %>%
-  map_dfr("metrics")
+  purrr::compact() %>%
+  purrr::map(~ .x$metrics) %>%
+  dplyr::bind_rows()
 
 lag_model_coefs <- lag_model_out %>%
-  discard(is.null) %>%
-  map_dfr("lag_coefs")
+  purrr::compact() %>%
+  purrr::map(~ .x$lag_coefs) %>%
+  dplyr::bind_rows()
 
 lag_model_summary <- lag_model_results %>%
   summarise(
     mean_accuracy = mean(accuracy, na.rm = TRUE),
-    mean_logloss = mean(logloss, na.rm = TRUE),
-    mean_brier = mean(brier, na.rm = TRUE)
+    mean_logloss  = mean(logloss,  na.rm = TRUE),
+    mean_brier    = mean(brier,    na.rm = TRUE)
   ) %>%
   mutate(
     across(
@@ -547,19 +573,19 @@ print(lag_model_coefs)
 
 write.csv(
   lag_model_results,
-  "results/lag_model_results.csv",
+  file.path(table_dir, "lag_model_results.csv"),
   row.names = FALSE
 )
 
 write.csv(
   lag_model_summary,
-  "results/lag_model_summary.csv",
+  file.path(table_dir, "lag_model_summary.csv"),
   row.names = FALSE
 )
 
 write.csv(
   lag_model_coefs,
-  "results/lag_model_coefficients.csv",
+  file.path(table_dir, "lag_model_coefficients.csv"),
   row.names = FALSE
 )
 
@@ -568,13 +594,18 @@ write.csv(
 # ---------------------------------------------------------
 
 fit_one_baseline_model <- function(train_data, test_data) {
+  
   model <- glm(
     y_num ~ x + seed_diff + tourney_level,
     data = train_data,
     family = binomial()
   )
   
-  pred <- predict(model, newdata = test_data, type = "response")
+  pred <- predict(
+    model,
+    newdata = test_data,
+    type = "response"
+  )
   
   eps <- 1e-15
   p <- pmin(pmax(pred, eps), 1 - eps)
@@ -582,25 +613,35 @@ fit_one_baseline_model <- function(train_data, test_data) {
   
   tibble(
     test_year = unique(test_data$year),
-    n_train = nrow(train_data),
-    n_test = nrow(test_data),
+    n_train   = nrow(train_data),
+    n_test    = nrow(test_data),
+    
     accuracy = mean((p >= 0.5) == (y == 1)),
-    logloss = -mean(y * log(p) + (1 - y) * log(1 - p)),
-    brier = mean((p - y)^2)
+    
+    logloss =
+      -mean(y * log(p) + (1 - y) * log(1 - p)),
+    
+    brier =
+      mean((p - y)^2)
   )
 }
 
 baseline_out <- map(
   START_YEAR:END_YEAR,
   function(test_year) {
+    
     train_data <- df_model_lag %>%
-      filter(year >= test_year - WINDOW_YEARS, year < test_year)
+      filter(year >= test_year - WINDOW_YEARS,
+             year < test_year)
     
     test_data <- df_model_lag %>%
       filter(year == test_year)
     
-    if (nrow(train_data) > 100 && nrow(test_data) > 100) {
+    if (nrow(train_data) > 100 &&
+        nrow(test_data) > 100) {
+      
       fit_one_baseline_model(train_data, test_data)
+      
     } else {
       NULL
     }
@@ -608,20 +649,20 @@ baseline_out <- map(
 )
 
 baseline_results <- baseline_out %>%
-  discard(is.null) %>%
-  map_dfr(~ .x)
+  purrr::compact() %>%
+  dplyr::bind_rows()
 
 cat("\n=== Rolling logistic baseline without lag features ===\n")
 print(baseline_results)
 
 write.csv(
   baseline_results,
-  "results/lag_baseline_results.csv",
+  file.path(table_dir, "lag_baseline_results.csv"),
   row.names = FALSE
 )
 
 message("\nLag-enhanced rolling model fitted.")
-message("Lag model results saved to results/.")
+message("Lag model outputs saved to outputs/tables/ and outputs/figures/.")
 
 # ---------------------------------------------------------
 # 14) Compare original rolling model and lag-enhanced model
@@ -653,7 +694,7 @@ print(compare_lag_summary)
 
 write.csv(
   compare_lag_summary,
-  "results/lag_model_comparison_summary.csv",
+  file.path(table_dir, "lag_model_comparison_summary.csv"),
   row.names = FALSE
 )
 
@@ -674,7 +715,7 @@ print(compare_lag_results)
 
 write.csv(
   compare_lag_results,
-  "results/lag_model_comparison_yearly.csv",
+  file.path(table_dir, "lag_model_comparison_yearly.csv"),
   row.names = FALSE
 )
 
@@ -707,7 +748,7 @@ p_lag_compare_models <- compare_lag_results %>%
 print(p_lag_compare_models)
 
 ggsave(
-  filename = "figures/lag_compare_models.png",
+  filename = file.path(figure_dir, "lag_compare_models.png"),
   plot = p_lag_compare_models,
   width = 9,
   height = 5,
@@ -737,7 +778,7 @@ p_lag_feature_coefficients <- lag_model_coefs %>%
 print(p_lag_feature_coefficients)
 
 ggsave(
-  filename = "figures/lag_feature_coefficients.png",
+  filename = file.path(figure_dir, "lag_feature_coefficients.png"),
   plot = p_lag_feature_coefficients,
   width = 8,
   height = 5,
@@ -755,5 +796,13 @@ cat("\n=== Final comparison summary ===\n")
 print(compare_lag_summary)
 
 message("\nLag-enhanced rolling logistic analysis completed.")
-message("Comparison tables saved to results/.")
-message("Figures saved to figures/.")
+message("Comparison tables saved to:")
+message(" - outputs/tables/lag_baseline_results.csv")
+message(" - outputs/tables/lag_model_results.csv")
+message(" - outputs/tables/lag_model_summary.csv")
+message(" - outputs/tables/lag_model_coefficients.csv")
+message(" - outputs/tables/lag_model_comparison_summary.csv")
+message(" - outputs/tables/lag_model_comparison_yearly.csv")
+message("Figures saved to:")
+message(" - outputs/figures/lag_compare_models.png")
+message(" - outputs/figures/lag_feature_coefficients.png")
