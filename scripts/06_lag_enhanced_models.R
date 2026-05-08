@@ -519,33 +519,41 @@ fit_one_lag_model <- function(train_data, test_data) {
 lag_model_out <- map(
   START_YEAR:END_YEAR,
   function(test_year) {
+    
     train_data <- df_model_lag %>%
-      filter(year >= test_year - WINDOW_YEARS, year < test_year)
+      filter(year >= test_year - WINDOW_YEARS,
+             year < test_year)
     
     test_data <- df_model_lag %>%
       filter(year == test_year)
     
-    if (nrow(train_data) > 100 && nrow(test_data) > 100) {
+    if (nrow(train_data) > 100 &&
+        nrow(test_data) > 100) {
+      
       fit_one_lag_model(train_data, test_data)
+      
     } else {
       NULL
     }
   }
 )
 
+# Safer extraction than map_dfr("metrics")
 lag_model_results <- lag_model_out %>%
-  discard(is.null) %>%
-  map_dfr("metrics")
+  purrr::compact() %>%
+  purrr::map(~ .x$metrics) %>%
+  dplyr::bind_rows()
 
 lag_model_coefs <- lag_model_out %>%
-  discard(is.null) %>%
-  map_dfr("lag_coefs")
+  purrr::compact() %>%
+  purrr::map(~ .x$lag_coefs) %>%
+  dplyr::bind_rows()
 
 lag_model_summary <- lag_model_results %>%
   summarise(
     mean_accuracy = mean(accuracy, na.rm = TRUE),
-    mean_logloss = mean(logloss, na.rm = TRUE),
-    mean_brier = mean(brier, na.rm = TRUE)
+    mean_logloss  = mean(logloss,  na.rm = TRUE),
+    mean_brier    = mean(brier,    na.rm = TRUE)
   ) %>%
   mutate(
     across(
@@ -586,13 +594,18 @@ write.csv(
 # ---------------------------------------------------------
 
 fit_one_baseline_model <- function(train_data, test_data) {
+  
   model <- glm(
     y_num ~ x + seed_diff + tourney_level,
     data = train_data,
     family = binomial()
   )
   
-  pred <- predict(model, newdata = test_data, type = "response")
+  pred <- predict(
+    model,
+    newdata = test_data,
+    type = "response"
+  )
   
   eps <- 1e-15
   p <- pmin(pmax(pred, eps), 1 - eps)
@@ -600,25 +613,35 @@ fit_one_baseline_model <- function(train_data, test_data) {
   
   tibble(
     test_year = unique(test_data$year),
-    n_train = nrow(train_data),
-    n_test = nrow(test_data),
+    n_train   = nrow(train_data),
+    n_test    = nrow(test_data),
+    
     accuracy = mean((p >= 0.5) == (y == 1)),
-    logloss = -mean(y * log(p) + (1 - y) * log(1 - p)),
-    brier = mean((p - y)^2)
+    
+    logloss =
+      -mean(y * log(p) + (1 - y) * log(1 - p)),
+    
+    brier =
+      mean((p - y)^2)
   )
 }
 
 baseline_out <- map(
   START_YEAR:END_YEAR,
   function(test_year) {
+    
     train_data <- df_model_lag %>%
-      filter(year >= test_year - WINDOW_YEARS, year < test_year)
+      filter(year >= test_year - WINDOW_YEARS,
+             year < test_year)
     
     test_data <- df_model_lag %>%
       filter(year == test_year)
     
-    if (nrow(train_data) > 100 && nrow(test_data) > 100) {
+    if (nrow(train_data) > 100 &&
+        nrow(test_data) > 100) {
+      
       fit_one_baseline_model(train_data, test_data)
+      
     } else {
       NULL
     }
@@ -626,8 +649,8 @@ baseline_out <- map(
 )
 
 baseline_results <- baseline_out %>%
-  discard(is.null) %>%
-  map_dfr(~ .x)
+  purrr::compact() %>%
+  dplyr::bind_rows()
 
 cat("\n=== Rolling logistic baseline without lag features ===\n")
 print(baseline_results)
