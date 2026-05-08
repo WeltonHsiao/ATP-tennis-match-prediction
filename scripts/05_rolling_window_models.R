@@ -41,15 +41,23 @@ WINDOW_YEARS <- 3
 START_YEAR <- 2003
 END_YEAR <- 2019
 
-df_clean <- readRDS("data/processed/df_clean.rds")
+input_path <- "data/processed/df_clean.rds"
+table_dir  <- "outputs/tables"
+figure_dir <- "outputs/figures"
 
-if (!dir.exists("results")) {
-  dir.create("results", recursive = TRUE)
+if (!file.exists(input_path)) {
+  stop("Cleaned data not found. Please run scripts/01_load_clean_data.R first.")
 }
 
-if (!dir.exists("figures")) {
-  dir.create("figures", recursive = TRUE)
+if (!dir.exists(table_dir)) {
+  dir.create(table_dir, recursive = TRUE)
 }
+
+if (!dir.exists(figure_dir)) {
+  dir.create(figure_dir, recursive = TRUE)
+}
+
+df_clean <- readRDS(input_path)
 
 # ---------------------------------------------------------
 # 1) Prepare modelling frame
@@ -130,7 +138,10 @@ fit_one_window <- function(train_data, test_data) {
   )
 }
 
-# =============== 4) Rolling loop over years =================
+# ---------------------------------------------------------
+# 3) Rolling loop over years
+# ---------------------------------------------------------
+
 rolling_results <- map_dfr(
   START_YEAR:END_YEAR,
   function(y_test) {
@@ -150,16 +161,30 @@ rolling_results <- map_dfr(
   }
 )
 
-# =============== 5) Inspect numeric results =================
+# ---------------------------------------------------------
+# 4) Inspect numeric results
+# ---------------------------------------------------------
+
 print(rolling_results)
 
-# =============== 6) Visualize performance over time =========
-rolling_results %>%
-  pivot_longer(cols = c(accuracy, logloss, brier),
-               names_to = "metric",
-               values_to = "value") %>%
+write.csv(
+  rolling_results,
+  file.path(table_dir, "rolling_results_3_year_window.csv"),
+  row.names = FALSE
+)
+
+# ---------------------------------------------------------
+# 5) Visualize 3-year rolling-window performance over time
+# ---------------------------------------------------------
+
+p_rolling_results <- rolling_results %>%
+  pivot_longer(
+    cols = c(accuracy, logloss, brier),
+    names_to = "metric",
+    values_to = "value"
+  ) %>%
   ggplot(aes(x = test_year, y = value, color = metric)) +
-  geom_line(size = 1) +
+  geom_line(linewidth = 1) +
   geom_point(size = 2) +
   labs(
     title = "Rolling-Window Results",
@@ -169,8 +194,18 @@ rolling_results %>%
   ) +
   theme_minimal(base_size = 13)
 
+print(p_rolling_results)
+
+ggsave(
+  filename = file.path(figure_dir, "rolling_results_3_year_window.png"),
+  plot = p_rolling_results,
+  width = 8,
+  height = 5,
+  dpi = 300
+)
+
 # ---------------------------------------------------------
-# 5) Sensitivity analysis: compare rolling-window sizes
+# 6) Sensitivity analysis: compare rolling-window sizes
 # ---------------------------------------------------------
 
 window_grid <- c(1, 2, 3, 4, 5)
@@ -204,12 +239,12 @@ print(rolling_all)
 
 write.csv(
   rolling_all,
-  "results/rolling_all_window_sizes.csv",
+  file.path(table_dir, "rolling_all_window_sizes.csv"),
   row.names = FALSE
 )
 
 # ---------------------------------------------------------
-# 6) Summary table by window size
+# 7) Summary table by window size
 # ---------------------------------------------------------
 
 rolling_summary <- rolling_all %>%
@@ -231,12 +266,12 @@ print(rolling_summary)
 
 write.csv(
   rolling_summary,
-  "results/rolling_window_summary.csv",
+  file.path(table_dir, "rolling_window_summary.csv"),
   row.names = FALSE
 )
 
 # ---------------------------------------------------------
-# 7) Plot performance across window sizes
+# 8) Plot performance across window sizes
 # ---------------------------------------------------------
 
 p_window_size_results <- rolling_all %>%
@@ -264,7 +299,7 @@ p_window_size_results <- rolling_all %>%
 print(p_window_size_results)
 
 ggsave(
-  filename = "figures/window_size_performance_over_time.png",
+  filename = file.path(figure_dir, "window_size_performance_over_time.png"),
   plot = p_window_size_results,
   width = 8,
   height = 8,
@@ -272,7 +307,7 @@ ggsave(
 )
 
 # ---------------------------------------------------------
-# 8) Plot average performance by window size
+# 9) Plot average performance by window size
 # ---------------------------------------------------------
 
 p_window_size_comparison <- rolling_summary %>%
@@ -299,7 +334,7 @@ p_window_size_comparison <- rolling_summary %>%
 print(p_window_size_comparison)
 
 ggsave(
-  filename = "figures/window_size_comparison.png",
+  filename = file.path(figure_dir, "window_size_comparison.png"),
   plot = p_window_size_comparison,
   width = 7,
   height = 8,
@@ -307,5 +342,11 @@ ggsave(
 )
 
 message("\nRolling-window sensitivity analysis completed.")
-message("Summary saved to results/rolling_window_summary.csv")
-message("Figures saved to figures/.")
+message("Results saved to:")
+message(" - outputs/tables/rolling_results_3_year_window.csv")
+message(" - outputs/tables/rolling_all_window_sizes.csv")
+message(" - outputs/tables/rolling_window_summary.csv")
+message("Figures saved to:")
+message(" - outputs/figures/rolling_results_3_year_window.png")
+message(" - outputs/figures/window_size_performance_over_time.png")
+message(" - outputs/figures/window_size_comparison.png")
