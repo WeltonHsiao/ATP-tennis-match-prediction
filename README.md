@@ -1,40 +1,53 @@
 # ATP Tennis Match Prediction
 
-This repository contains R code for a Data Science Research Project on pre-match ATP tennis outcome prediction.
+This repository contains R code for a Data Science research project on ATP men's tennis match prediction.
 
-## Project
+## Project Overview
 
-The project compares logistic regression, Elo rating models, rolling-window logistic regression, and lag-enhanced rolling logistic regression models using ATP men's singles match data from 2000–2019.
+The project compares several predictive approaches for pre-match ATP singles outcomes, including:
+
+- Logistic regression
+- Elo rating models
+- Rolling-window logistic regression
+- Lag-enhanced rolling logistic regression
+
+The models are evaluated using ATP men's singles match data from 2000–2019.
 
 ## Data
 
-Raw ATP match data can be downloaded from Jeff Sackmann's tennis_atp repository:
+Raw ATP match data can be downloaded from Jeff Sackmann's public repository:
 
 https://github.com/JeffSackmann/tennis_atp
 
-Place the annual CSV files in:
+Place the annual CSV files inside:
 
 data/raw/
 
-## Scripts
+## Repository Structure
 
-Run the scripts in order:
+data/
+├── raw/
+├── processed/
 
-1. scripts/01_load_clean_data.R
-2. scripts/02_exploratory_data_analysis.R
-3. scripts/03_logistic_regression_models.R
-4. scripts/04_elo_models.R
-5. scripts/05_rolling_window_models.R
-6. scripts/06_lag_enhanced_models.R
+outputs/
+├── figures/
+├── tables/
 
-## Outputs
+scripts/
+├── 01_load_clean_data.R
+├── 02_exploratory_data_analysis.R
+├── 03_logistic_regression_models.R
+├── 04_elo_models.R
+├── 05_rolling_window_models.R
+├── 06_lag_enhanced_models.R
 
+## Outputs 
 - figures/: visualisations used in the report
 - results/: model performance tables
-- data/processed/: cleaned and processed datasets
+- data/processed/: cleaned and processed datasets 
 
 ## Author
 
-Welton Hsiao  
-Master of Data Science  
-Adeliade University
+Welton Hsiao 
+Master of Data Science 
+Adelaide University
